@@ -128,9 +128,12 @@
                                     <div class="optional hidden">
                                         <p><strong>CSP (Cloud Solution Provider) Purchase:</strong> Simulate a partner buying on behalf of a customer. The purchaser (CSP) will have a different tenant than the beneficiary (customer), and customer operations will be restricted to Read-only.</p>
                                     </div>
-                                    <div class="optional hidden">
-                                        <label>CSP Purchase</label>
-                                        <input id="cspPurchase" type="checkbox" />
+                                    <div class="optional hidden csp-selection">
+                                        <label>CSP Partner</label>
+                                        <select id="cspPartnerSelect">
+                                            <option value="">(Direct Purchase - No CSP)</option>
+                                        </select>
+                                        <button id="manageCspsButton" type="button" class="secondary small">Manage</button>
                                     </div>
                                     <div class="optional hidden">
                                         <p>To manually specify purchaser details (instead of using CSP defaults), check "Specify purchaser" and enter their AAD Object ID and Tenant ID below.</p>

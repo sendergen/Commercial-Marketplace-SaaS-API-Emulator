@@ -126,3 +126,109 @@ section.purchase input[type=number] {
     flex: 0 0;
     width: 100px;
 }
+
+/* CSP Selection */
+section.purchase .csp-selection {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+section.purchase .csp-selection select {
+    flex: 1;
+}
+
+section.purchase .csp-selection button.small {
+    flex: 0 0 auto;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+/* CSP Management Dialog */
+.csp-dialog {
+    min-width: 450px;
+}
+
+.csp-management .csp-list {
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+}
+
+.csp-management .csp-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    background: #f9f9f9;
+}
+
+.csp-management .csp-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.csp-management .csp-info strong {
+    font-size: 14px;
+}
+
+.csp-management .csp-info span {
+    font-size: 12px;
+    color: #666;
+}
+
+.csp-management .csp-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.csp-management .csp-actions button {
+    padding: 4px 8px;
+    font-size: 11px;
+}
+
+.csp-management .no-csps {
+    text-align: center;
+    color: #888;
+    padding: 20px;
+    font-style: italic;
+}
+
+.csp-management hr {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin: 15px 0;
+}
+
+.csp-management .csp-form > div {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.csp-management .csp-form label {
+    flex: 0 0 80px;
+    font-size: 13px;
+}
+
+.csp-management .csp-form input {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.csp-management .form-actions {
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.csp-management .form-actions button {
+    padding: 6px 12px;
+}
