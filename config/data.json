@@ -1,0 +1,189 @@
+{
+  "version": "1.0",
+  "publishers": {},
+  "offers": {
+    "email-signatures": {
+      "offerId": "email-signatures",
+      "displayName": "Email Signatures",
+      "publisher": "Opensense",
+      "persist": true,
+      "builtIn": false,
+      "plans": {
+        "SIG-BASIC-M-PU": {
+          "planId": "SIG-BASIC-M-PU",
+          "displayName": "Signature Plan",
+          "description": "Basic email signature management",
+          "isPrivate": false,
+          "hasFreeTrials": false,
+          "isPricePerSeat": true,
+          "isStopSell": false,
+          "market": "US",
+          "planComponents": {
+            "recurrentBillingTerms": [
+              {
+                "currency": "USD",
+                "price": 1.0,
+                "termUnit": "P1M",
+                "termDescription": "Monthly per user"
+              }
+            ],
+            "meteringDimensions": []
+          }
+        },
+        "SIG-PIPE-M-PU": {
+          "planId": "SIG-PIPE-M-PU",
+          "displayName": "Pipeline Plan",
+          "description": "Email signatures with pipeline integration",
+          "isPrivate": false,
+          "hasFreeTrials": false,
+          "isPricePerSeat": true,
+          "isStopSell": false,
+          "market": "US",
+          "planComponents": {
+            "recurrentBillingTerms": [
+              {
+                "currency": "USD",
+                "price": 3.0,
+                "termUnit": "P1M",
+                "termDescription": "Monthly per user"
+              }
+            ],
+            "meteringDimensions": []
+          }
+        },
+        "SIG-CMPLT-M-PU": {
+          "planId": "SIG-CMPLT-M-PU",
+          "displayName": "Complete Plan",
+          "description": "Full-featured email signature solution",
+          "isPrivate": false,
+          "hasFreeTrials": false,
+          "isPricePerSeat": true,
+          "isStopSell": false,
+          "market": "US",
+          "planComponents": {
+            "recurrentBillingTerms": [
+              {
+                "currency": "USD",
+                "price": 5.0,
+                "termUnit": "P1M",
+                "termDescription": "Monthly per user"
+              }
+            ],
+            "meteringDimensions": []
+          }
+        }
+      }
+    },
+    "engagement": {
+      "offerId": "engagement",
+      "displayName": "Engagement",
+      "publisher": "Opensense",
+      "persist": true,
+      "builtIn": false,
+      "plans": {
+        "ENG-BRONZE-M-PU": {
+          "planId": "ENG-BRONZE-M-PU",
+          "displayName": "Bronze Engagement Plan",
+          "description": "Entry-level engagement tracking",
+          "isPrivate": false,
+          "hasFreeTrials": false,
+          "isPricePerSeat": true,
+          "isStopSell": false,
+          "market": "US",
+          "planComponents": {
+            "recurrentBillingTerms": [
+              {
+                "currency": "USD",
+                "price": 20.0,
+                "termUnit": "P1M",
+                "termDescription": "Monthly per user"
+              }
+            ],
+            "meteringDimensions": []
+          }
+        },
+        "ENG-GOLD-M-PU": {
+          "planId": "ENG-GOLD-M-PU",
+          "displayName": "Gold Engagement Plan",
+          "description": "Advanced engagement analytics and tracking",
+          "isPrivate": false,
+          "hasFreeTrials": false,
+          "isPricePerSeat": true,
+          "isStopSell": false,
+          "market": "US",
+          "planComponents": {
+            "recurrentBillingTerms": [
+              {
+                "currency": "USD",
+                "price": 50.0,
+                "termUnit": "P1M",
+                "termDescription": "Monthly per user"
+              }
+            ],
+            "meteringDimensions": []
+          }
+        }
+      }
+    },
+    "business-cards": {
+      "offerId": "business-cards",
+      "displayName": "Business Cards",
+      "publisher": "Opensense",
+      "persist": true,
+      "builtIn": false,
+      "plans": {
+        "DBC-STND-M-PU": {
+          "planId": "DBC-STND-M-PU",
+          "displayName": "Basic",
+          "description": "Digital business card solution",
+          "isPrivate": false,
+          "hasFreeTrials": false,
+          "isPricePerSeat": true,
+          "isStopSell": false,
+          "market": "US",
+          "planComponents": {
+            "recurrentBillingTerms": [
+              {
+                "currency": "USD",
+                "price": 3.0,
+                "termUnit": "P1M",
+                "termDescription": "Monthly per user"
+              }
+            ],
+            "meteringDimensions": []
+          }
+        }
+      }
+    },
+    "platform": {
+      "offerId": "platform",
+      "displayName": "Platform",
+      "publisher": "Opensense",
+      "persist": true,
+      "builtIn": false,
+      "plans": {
+        "PLT-STD-Y-FR": {
+          "planId": "PLT-STD-Y-FR",
+          "displayName": "Platform License",
+          "description": "Full platform access",
+          "isPrivate": false,
+          "hasFreeTrials": false,
+          "isPricePerSeat": false,
+          "isStopSell": false,
+          "market": "US",
+          "planComponents": {
+            "recurrentBillingTerms": [
+              {
+                "currency": "USD",
+                "price": 100.0,
+                "termUnit": "P1M",
+                "termDescription": "Monthly flat rate"
+              }
+            ],
+            "meteringDimensions": []
+          }
+        }
+      }
+    }
+  }
+}
