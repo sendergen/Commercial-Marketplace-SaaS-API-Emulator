@@ -126,7 +126,14 @@
                                         <input id="beneficiaryTid" type="text" />
                                     </div>
                                     <div class="optional hidden">
-                                        <p>To simulate a purchase with a real user on behalf of another real user, check "Specify purchaser" enter their AAD Object ID and Tenant ID below.</p>
+                                        <p><strong>CSP (Cloud Solution Provider) Purchase:</strong> Simulate a partner buying on behalf of a customer. The purchaser (CSP) will have a different tenant than the beneficiary (customer), and customer operations will be restricted to Read-only.</p>
+                                    </div>
+                                    <div class="optional hidden">
+                                        <label>CSP Purchase</label>
+                                        <input id="cspPurchase" type="checkbox" />
+                                    </div>
+                                    <div class="optional hidden">
+                                        <p>To manually specify purchaser details (instead of using CSP defaults), check "Specify purchaser" and enter their AAD Object ID and Tenant ID below.</p>
                                     </div>
                                     <div class="optional hidden">
                                         <label>Specify purchaser</label>

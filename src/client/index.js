@@ -8,23 +8,59 @@ $(async () => {
     const {result} = await callAPI("/api/util/config");
     config = result;
 
-    const defaultPurchaser = {
-        email: "user@forthcoffee.com",
+    // Default beneficiary (end customer)
+    const defaultBeneficiary = {
+        email: "customer@endcustomer.com",
         oid: guid(),
         tid: guid()
     }
 
-    $("#beneficiaryEmail,#purchaserEmail").val(defaultPurchaser.email);
-    $("#beneficiaryOid,#purchaserOid").val(defaultPurchaser.oid);
-    $("#beneficiaryTid,#purchaserTid").val(defaultPurchaser.tid);
+    // Default CSP partner (purchaser for CSP purchases)
+    const defaultCspPartner = {
+        email: "admin@msppartner.com",
+        oid: guid(),
+        tid: guid()
+    }
+
+    $("#beneficiaryEmail").val(defaultBeneficiary.email);
+    $("#beneficiaryOid").val(defaultBeneficiary.oid);
+    $("#beneficiaryTid").val(defaultBeneficiary.tid);
+
+    // Initially set purchaser same as beneficiary (direct purchase)
+    $("#purchaserEmail").val(defaultBeneficiary.email);
+    $("#purchaserOid").val(defaultBeneficiary.oid);
+    $("#purchaserTid").val(defaultBeneficiary.tid);
 
     const $purchaserInputs = $("#purchaserEmail,#purchaserOid,#purchaserTid");
     const $purchaserToggle = $("#purchaserIsBeneficiary");
+    const $cspToggle = $("#cspPurchase");
     const $toggleOptionalFields = $("section.purchase .toggle-optional a");
     const $planSelect = $("section.purchase select");
 
+    // CSP Purchase toggle - auto-populate with CSP partner details
+    $cspToggle.on("change", () => {
+        const isCsp = $cspToggle.is(":checked");
+        if (isCsp) {
+            // Set purchaser to CSP partner (different tenant from beneficiary)
+            $("#purchaserEmail").val(defaultCspPartner.email);
+            $("#purchaserOid").val(defaultCspPartner.oid);
+            $("#purchaserTid").val(defaultCspPartner.tid);
+            // Disable manual purchaser toggle when CSP is enabled
+            $purchaserToggle.prop("checked", false).prop("disabled", true);
+            $purchaserInputs.attr("disabled", true);
+        } else {
+            // Reset purchaser to same as beneficiary (direct purchase)
+            $("#purchaserEmail").val($("#beneficiaryEmail").val());
+            $("#purchaserOid").val($("#beneficiaryOid").val());
+            $("#purchaserTid").val($("#beneficiaryTid").val());
+            // Re-enable manual purchaser toggle
+            $purchaserToggle.prop("disabled", false);
+        }
+    });
+
     $purchaserToggle.on("change", () => {
-        $purchaserInputs.attr("disabled", !$purchaserToggle.is(":checked")).parent().toggleClass("hidden", !$purchaserToggle.is(":checked"));
+        const showPurchaser = $purchaserToggle.is(":checked") && !$cspToggle.is(":checked");
+        $purchaserInputs.attr("disabled", !showPurchaser).parent().toggleClass("hidden", !showPurchaser);
     });
 
     let displayOptionalFields = false;
@@ -91,10 +127,12 @@ function selectOffer(offer) {
 
 function generateToken() {
 
-    const beneficiaryAsPurchaser = !$("#purchaserIsBeneficiary").is(":checked");
+    const isCspPurchase = $("#cspPurchase").is(":checked");
+    const manualPurchaser = $("#purchaserIsBeneficiary").is(":checked");
+    const useDifferentPurchaser = isCspPurchase || manualPurchaser;
     const $plans = $("section.purchase select");
 
-    const sub = { 
+    const sub = {
         "id": $('#subscriptionId').val(),
         "name": $('#subscriptionName').val(),
         "offerId": $plans.data("offer").offerId,
@@ -105,14 +143,20 @@ function generateToken() {
             "tenantId": $('#beneficiaryTid').val()
         },
         "purchaser": {
-            "emailId": beneficiaryAsPurchaser ? $("#beneficiaryEmail").val() : $("#purchaserEmail").val(),
-            "objectId": beneficiaryAsPurchaser ? $('#beneficiaryOid').val() : $("#purchaserOid").val(),
-            "tenantId": beneficiaryAsPurchaser ? $('#beneficiaryTid').val() : $("#purchaserTid").val()
+            "emailId": useDifferentPurchaser ? $("#purchaserEmail").val() : $("#beneficiaryEmail").val(),
+            "objectId": useDifferentPurchaser ? $('#purchaserOid').val() : $("#beneficiaryOid").val(),
+            "tenantId": useDifferentPurchaser ? $('#purchaserTid').val() : $("#beneficiaryTid").val()
         },
         "quantity": parseInt($('#quantity').val()),
         "autoRenew": false,
         "isTest": false,
-        "isFreeTrial": false
+        "isFreeTrial": false,
+        // CSP purchases restrict customer operations to Read-only
+        // Direct purchases allow Read, Update, Delete
+        "allowedCustomerOperations": isCspPurchase ? ["Read"] : ["Read", "Update", "Delete"],
+        // sandboxType "None" for both production-like direct and CSP purchases
+        // (sandboxType "Csp" is only for CSP sandbox testing, not production CSP simulation)
+        "sandboxType": "None"
     }
 
     const json = JSON.stringify(sub, null, 2);
