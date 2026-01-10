@@ -5,16 +5,21 @@ let config;
 // CSP Partner Storage
 const CSP_STORAGE_KEY = 'emulator_csp_partners';
 
-function loadCspPartners() {
-    try {
-        const stored = localStorage.getItem(CSP_STORAGE_KEY);
-        if (stored) {
-            return JSON.parse(stored);
-        }
-    } catch (e) {
-        console.error('Failed to load CSP partners:', e);
+// Default CSP partners from server config (set after config loads)
+let serverCspPartners = null;
+
+function getDefaultCspPartners() {
+    // If server provided CSP partners via CSP_PARTNERS env var, use those
+    if (serverCspPartners && serverCspPartners.length > 0) {
+        return serverCspPartners.map((p, i) => ({
+            id: `server-csp-${i}`,
+            name: p.name,
+            email: p.email,
+            oid: p.oid || guid(),
+            tid: p.tid || guid()
+        }));
     }
-    // Default CSP partners
+    // Fallback default
     return [
         {
             id: 'default-csp',
@@ -24,6 +29,19 @@ function loadCspPartners() {
             tid: guid()
         }
     ];
+}
+
+function loadCspPartners() {
+    try {
+        const stored = localStorage.getItem(CSP_STORAGE_KEY);
+        if (stored) {
+            return JSON.parse(stored);
+        }
+    } catch (e) {
+        console.error('Failed to load CSP partners:', e);
+    }
+    // Return defaults (from server config or hardcoded fallback)
+    return getDefaultCspPartners();
 }
 
 function saveCspPartners(partners) {
@@ -205,6 +223,11 @@ $(async () => {
     const {result} = await callAPI("/api/util/config");
     config = result;
 
+    // Load CSP partners from server config (if provided via CSP_PARTNERS env var)
+    if (config && config.cspPartners) {
+        serverCspPartners = config.cspPartners;
+    }
+
     // Default beneficiary (end customer)
     const defaultBeneficiary = {
         email: "customer@endcustomer.com",
@@ -227,7 +250,7 @@ $(async () => {
     const $toggleOptionalFields = $("section.purchase .toggle-optional a");
     const $planSelect = $("section.purchase select[id!='cspPartnerSelect']");
 
-    // Initialize CSP dropdown
+    // Initialize CSP dropdown (uses serverCspPartners if available)
     populateCspDropdown();
 
     // CSP Partner selection change

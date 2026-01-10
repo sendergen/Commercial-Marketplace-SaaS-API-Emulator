@@ -27,6 +27,13 @@ export interface StateStore {
   getOffer: (offerId: string) => Offer | undefined;
 }
 
+export interface CspPartner {
+  name: string;
+  email: string;
+  oid?: string;
+  tid?: string;
+}
+
 export interface Config {
   webhookUrl: string | undefined;
   landingPageUrl: string | undefined;
@@ -38,6 +45,7 @@ export interface Config {
   publisherId: string | undefined;
   requireAuth: boolean | undefined;
   noSamples: boolean | undefined;
+  cspPartners: CspPartner[] | undefined;
 
   run: {
     skipDataLoad: boolean | undefined;
