@@ -315,13 +315,13 @@ $(async () => {
 });
 
 function selectOffer(offer) {
-    
+
     $("#subscriptionId").val(guid());
 
     $("section.purchase .offer > span:first-child").text(offer.displayName);
     $("section.purchase .offer > span:last-child").text(offer.publisher);
 
-    const $plans = $("section.purchase select").empty();
+    const $plans = $("section.purchase select:not(#cspPartnerSelect)").empty();
 
     for (const planId in offer.plans) {
         if (!Object.prototype.hasOwnProperty.call(offer.plans, planId)) {
