@@ -14,6 +14,7 @@ import {
   Plan
 } from '../types';
 import { generateSampleOffer } from '../helpers/offer-helper';
+import { DEFAULT_OPENSENSE_OFFERS } from '../helpers/default-offers';
 import { Logger } from './logger';
 
 export default class DefaultStateStore implements StateStore {
@@ -39,61 +40,102 @@ export default class DefaultStateStore implements StateStore {
     return (await fs.stat(filePath).catch((_) => false)) as boolean;
   }
 
-  async loadSubscriptions(fileLocation: string): Promise<void> {
-    const filePath = path.resolve(fileLocation, 'data.json');
+  private async loadSubscriptionsFile(fileLocation: string): Promise<void> {
+    const filePath = path.resolve(fileLocation, 'subscriptions.json');
 
     if (!(await this.fileExists(filePath))) {
-      this.logger.log("Data file doesn't exist - skipping data load", 'StateStore');
+      this.logger.log("subscriptions.json doesn't exist - starting with empty subscriptions", 'StateStore');
       return;
     }
 
     if (this.config.run.skipDataLoad === true) {
-      this.logger.log('SKIP DATA LOAD == true - skipping data load', 'StateStore');
+      this.logger.log('SKIP DATA LOAD == true - skipping subscriptions load', 'StateStore');
       return;
     }
 
-    const buffer = await fs.readFile(filePath, 'utf8');
-    const data = JSON.parse(buffer);
+    try {
+      const buffer = await fs.readFile(filePath, 'utf8');
+      const data = JSON.parse(buffer);
 
-    if (data?.version !== DataVersion) {
-      this.logger.log("Data version doesn't match - archiving file and skipping data load", 'StateStore');
-      const archivedPath = path.resolve(
-        path.dirname(filePath),
-        `data_${(data.version as string) ?? 'missing_version'}.json`
-      );
-      try {
-        await fs.copyFile(filePath, archivedPath);
-        await fs.rm(filePath);
-      } catch (e) {
-        this.logger.log(`Unable to archive data file - ${e as string}`, 'StateStore');
+      if (data?.version !== DataVersion) {
+        this.logger.log("Subscriptions version doesn't match - archiving file", 'StateStore');
+        const archivedPath = path.resolve(
+          path.dirname(filePath),
+          `subscriptions_${(data.version as string) ?? 'missing_version'}.json`
+        );
+        try {
+          await fs.copyFile(filePath, archivedPath);
+          await fs.rm(filePath);
+        } catch (e) {
+          this.logger.log(`Unable to archive subscriptions file - ${e as string}`, 'StateStore');
+        }
+        return;
       }
+
+      if (data?.publishers !== undefined) {
+        this.publishers = data.publishers;
+        this.logger.log(`Loaded subscriptions for ${Object.keys(this.publishers).length} publisher(s)`, 'StateStore');
+      }
+    } catch (e) {
+      this.logger.log(`Error loading subscriptions.json: ${e as string}`, 'StateStore');
+    }
+  }
+
+  private async loadOffersFile(fileLocation: string): Promise<void> {
+    const filePath = path.resolve(fileLocation, 'offers.json');
+
+    if (!(await this.fileExists(filePath))) {
+      this.logger.log("offers.json doesn't exist - using sample offers only", 'StateStore');
       return;
     }
 
-    if (data?.publishers !== undefined) {
-      this.publishers = data.publishers;
-    } else {
-      this.logger.log("Data file doesn't contain publishers - skipping data load for publishers", 'StateStore');
+    if (this.config.run.skipDataLoad === true) {
+      this.logger.log('SKIP DATA LOAD == true - skipping offers load', 'StateStore');
+      return;
     }
 
-    if (data?.offers !== undefined) {
-      this.offers = { ...this.offers, ...data.offers };
-    } else {
-      this.logger.log("Data file doesn't contain offers - skipping data load for offers", 'StateStore');
+    try {
+      const buffer = await fs.readFile(filePath, 'utf8');
+      const data = JSON.parse(buffer);
+
+      if (data?.version !== DataVersion) {
+        this.logger.log("Offers version doesn't match - archiving file", 'StateStore');
+        const archivedPath = path.resolve(
+          path.dirname(filePath),
+          `offers_${(data.version as string) ?? 'missing_version'}.json`
+        );
+        try {
+          await fs.copyFile(filePath, archivedPath);
+          await fs.rm(filePath);
+        } catch (e) {
+          this.logger.log(`Unable to archive offers file - ${e as string}`, 'StateStore');
+        }
+        return;
+      }
+
+      if (data?.offers !== undefined) {
+        this.offers = { ...this.offers, ...data.offers };
+        this.logger.log(`Loaded ${Object.keys(data.offers).length} offer(s) from file`, 'StateStore');
+      }
+    } catch (e) {
+      this.logger.log(`Error loading offers.json: ${e as string}`, 'StateStore');
     }
   }
 
   async load(): Promise<void> {
-
     this.offers = {};
     this.publishers = {};
-
 
     if (!this.config.noSamples) {
       const sampleOffer1: Offer = generateSampleOffer('flat-rate', 'Sample Flat Rate', false, false);
       const sampleOffer2: Offer = generateSampleOffer('per-seat', 'Sample Per Seat', true, false);
       this.offers[sampleOffer1.offerId] = sampleOffer1;
       this.offers[sampleOffer2.offerId] = sampleOffer2;
+
+      // Add Opensense offers as defaults
+      for (const offer of DEFAULT_OPENSENSE_OFFERS) {
+        this.offers[offer.offerId] = offer;
+      }
     }
 
     if (this.config.fileLocation === undefined) {
@@ -101,37 +143,63 @@ export default class DefaultStateStore implements StateStore {
       return;
     }
 
-    await this.loadSubscriptions(this.config.fileLocation);
+    await this.loadSubscriptionsFile(this.config.fileLocation);
+    await this.loadOffersFile(this.config.fileLocation);
   }
 
-  async save(): Promise<void> {
-    const persistOffers: Offers = {};
+  private async saveSubscriptions(): Promise<void> {
+    if (this.config.fileLocation === undefined) {
+      this.logger.log('Missing file location from config - skipping subscriptions save', 'StateStore');
+      return;
+    }
 
-    // Do not save offers marked as persist=false
-    Object.values(this.offers).reduce<Offers>((_, obj) => {
-      if (obj.persist) {
-        persistOffers[obj.offerId] = obj;
-      }
-      return persistOffers;
-    }, {});
+    const filePath = path.resolve(this.config.fileLocation, 'subscriptions.json');
+    await this.checkDir(filePath);
 
     const data = JSON.stringify({
       version: DataVersion,
-      publishers: this.publishers,
-      offers: persistOffers
-    });
-    if (this.config.fileLocation === undefined) {
-      this.logger.log('Missing file location from config - skipping data save', 'StateStore');
-      return;
-    }
-    const filePath = path.resolve(this.config.fileLocation, 'data.json');
-    await this.checkDir(filePath);
+      publishers: this.publishers
+    }, null, 2);
 
     try {
       await fs.writeFile(filePath, data, { encoding: 'utf8' });
     } catch (e) {
-      this.logger.log(`Failed to save - ${e as string}`, 'StateStore');
+      this.logger.log(`Failed to save subscriptions - ${e as string}`, 'StateStore');
     }
+  }
+
+  private async saveOffers(): Promise<void> {
+    if (this.config.fileLocation === undefined) {
+      this.logger.log('Missing file location from config - skipping offers save', 'StateStore');
+      return;
+    }
+
+    const filePath = path.resolve(this.config.fileLocation, 'offers.json');
+    await this.checkDir(filePath);
+
+    // Do not save offers marked as persist=false
+    const persistOffers: Offers = {};
+    Object.values(this.offers).forEach((obj) => {
+      if (obj.persist) {
+        persistOffers[obj.offerId] = obj;
+      }
+    });
+
+    const data = JSON.stringify({
+      version: DataVersion,
+      offers: persistOffers
+    }, null, 2);
+
+    try {
+      await fs.writeFile(filePath, data, { encoding: 'utf8' });
+    } catch (e) {
+      this.logger.log(`Failed to save offers - ${e as string}`, 'StateStore');
+    }
+  }
+
+  async save(): Promise<void> {
+    await this.saveSubscriptions();
+    await this.saveOffers();
   }
 
   async clearState(): Promise<void> {
@@ -139,9 +207,17 @@ export default class DefaultStateStore implements StateStore {
       this.logger.log('Missing file location from config - skipping data clear', 'StateStore');
       return;
     }
-    const filePath = path.resolve(this.config.fileLocation, 'data.json');
-    await this.checkDir(filePath);
-    await fs.writeFile(filePath, '{}', { encoding: 'utf8' });
+
+    // Clear subscriptions file
+    const subscriptionsPath = path.resolve(this.config.fileLocation, 'subscriptions.json');
+    await this.checkDir(subscriptionsPath);
+    await fs.writeFile(subscriptionsPath, JSON.stringify({ version: DataVersion, publishers: {} }, null, 2), { encoding: 'utf8' });
+
+    // Clear offers file
+    const offersPath = path.resolve(this.config.fileLocation, 'offers.json');
+    await this.checkDir(offersPath);
+    await fs.writeFile(offersPath, JSON.stringify({ version: DataVersion, offers: {} }, null, 2), { encoding: 'utf8' });
+
     await this.load();
   }
 
@@ -167,7 +243,7 @@ export default class DefaultStateStore implements StateStore {
       operations: {}
     };
 
-    await this.save();
+    await this.saveSubscriptions();
   }
 
   async updateSubscriptionAsync(publisherId: string, subscription: Subscription): Promise<boolean> {
@@ -181,7 +257,7 @@ export default class DefaultStateStore implements StateStore {
 
     publisherSubscription.subscription = subscription;
 
-    await this.save();
+    await this.saveSubscriptions();
 
     return true;
   }
@@ -201,6 +277,7 @@ export default class DefaultStateStore implements StateStore {
   async deleteSubscriptionAsync(publisherId: string, subscriptionId: string): Promise<boolean> {
     try {
       delete this.publishers[publisherId][subscriptionId];
+      await this.saveSubscriptions();
       return true;
     }
     catch {
@@ -222,7 +299,7 @@ export default class DefaultStateStore implements StateStore {
       operations[operation.id] = operation;
     }
 
-    await this.save();
+    await this.saveSubscriptions();
   }
 
   async getOperationAsync(
@@ -269,7 +346,7 @@ export default class DefaultStateStore implements StateStore {
       for (const sub in this.publishers[pub]) {
         const subscription = this.publishers[pub][sub];
         if (subscription.subscription.offerId === offer.offerId) {
-          
+
           if (!Object.prototype.hasOwnProperty.call(offer.plans, subscription.subscription.planId)) {
             return undefined;
           }
@@ -279,7 +356,7 @@ export default class DefaultStateStore implements StateStore {
     }
 
     this.offers[newOffer.offerId] = newOffer;
-    await this.save();
+    await this.saveOffers();
     return newOffer;
   }
 
@@ -300,7 +377,7 @@ export default class DefaultStateStore implements StateStore {
 
     // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
     delete this.offers[offerId];
-    await this.save();
+    await this.saveOffers();
     return true;
   }
 
