@@ -2,7 +2,7 @@ import { Express, RequestHandler } from 'express';
 import { generateSampleSubscription } from './helpers/subscription-helper';
 import { generateSampleOffer } from './helpers/offer-helper';
 import { ServicesContainer } from './services/container';
-import { Config, Offer } from './types';
+import { Config, Offer, CspPartner, Customer } from './types';
 
 // High-order function to inject ServiceContainer into api handlers
 const configure: (app: Express, services: ServicesContainer) => void = (app, services) => {
@@ -127,6 +127,104 @@ const configure: (app: Express, services: ServicesContainer) => void = (app, ser
 
   app.delete('/api/util/data-file', (async (req, res) => {
     await services.stateStore.clearState();
+    res.sendStatus(204);
+  }) as RequestHandler);
+
+  //
+  // CSP Partners - Get all
+  //
+  app.get('/api/util/csp-partners', (async (req, res) => {
+    const partners = services.configFiles.getCspPartners();
+    res.status(200).send(partners);
+  }) as RequestHandler);
+
+  //
+  // CSP Partners - Add/Update
+  //
+  app.post('/api/util/csp-partners', (async (req, res) => {
+    const partner = req.body as CspPartner;
+    if (!partner.id || !partner.name || !partner.email) {
+      res.status(400).send({ error: 'Partner must have id, name, and email' });
+      return;
+    }
+
+    const partners = services.configFiles.getCspPartners();
+    const existingIndex = partners.findIndex(p => p.id === partner.id);
+
+    if (existingIndex >= 0) {
+      partners[existingIndex] = partner;
+    } else {
+      partners.push(partner);
+    }
+
+    await services.configFiles.saveCspPartners(partners);
+    services.config.cspPartners = partners;
+    res.status(200).send(partner);
+  }) as RequestHandler);
+
+  //
+  // CSP Partners - Delete
+  //
+  app.delete('/api/util/csp-partners/:id', (async (req, res) => {
+    const partners = services.configFiles.getCspPartners();
+    const filteredPartners = partners.filter(p => p.id !== req.params.id);
+
+    if (filteredPartners.length === partners.length) {
+      res.sendStatus(404);
+      return;
+    }
+
+    await services.configFiles.saveCspPartners(filteredPartners);
+    services.config.cspPartners = filteredPartners;
+    res.sendStatus(204);
+  }) as RequestHandler);
+
+  //
+  // Customers - Get all
+  //
+  app.get('/api/util/customers', (async (req, res) => {
+    const customers = services.configFiles.getCustomers();
+    res.status(200).send(customers);
+  }) as RequestHandler);
+
+  //
+  // Customers - Add/Update
+  //
+  app.post('/api/util/customers', (async (req, res) => {
+    const customer = req.body as Customer;
+    if (!customer.id || !customer.name || !customer.emailId) {
+      res.status(400).send({ error: 'Customer must have id, name, and emailId' });
+      return;
+    }
+
+    const customers = services.configFiles.getCustomers();
+    const existingIndex = customers.findIndex(c => c.id === customer.id);
+
+    if (existingIndex >= 0) {
+      customers[existingIndex] = customer;
+    } else {
+      customers.push(customer);
+    }
+
+    await services.configFiles.saveCustomers(customers);
+    services.config.customers = customers;
+    res.status(200).send(customer);
+  }) as RequestHandler);
+
+  //
+  // Customers - Delete
+  //
+  app.delete('/api/util/customers/:id', (async (req, res) => {
+    const customers = services.configFiles.getCustomers();
+    const filteredCustomers = customers.filter(c => c.id !== req.params.id);
+
+    if (filteredCustomers.length === customers.length) {
+      res.sendStatus(404);
+      return;
+    }
+
+    await services.configFiles.saveCustomers(filteredCustomers);
+    services.config.customers = filteredCustomers;
     res.sendStatus(204);
   }) as RequestHandler);
 };

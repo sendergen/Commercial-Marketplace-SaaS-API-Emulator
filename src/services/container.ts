@@ -6,6 +6,7 @@ import { createLogger, Logger } from './logger';
 import * as purchaseToken from './purchase-token-decoder';
 import { createTokenService, TokenService } from './token-service';
 import { createNotificationService, NotificationService } from './notification-service';
+import { ConfigFileService, createConfigFileService } from './config-file-service';
 
 export interface ServicesContainer {
   jwt: typeof jwt;
@@ -16,6 +17,7 @@ export interface ServicesContainer {
   tokens: TokenService;
   notifications: NotificationService;
   logger: Logger;
+  configFiles: ConfigFileService;
 }
 
 export const createServicesContainer = (config: Config): ServicesContainer => {
@@ -29,6 +31,19 @@ export const createServicesContainer = (config: Config): ServicesContainer => {
     console.log(x);
   });
 
+  const configFiles = createConfigFileService(config.fileLocation ?? './config', logger);
+
+  // Load config files asynchronously
+  Promise.all([
+    configFiles.loadCspPartners(),
+    configFiles.loadCustomers()
+  ]).then(([cspPartners, customers]) => {
+    config.cspPartners = cspPartners;
+    config.customers = customers;
+  }).catch((x) => {
+    console.log('Error loading config files:', x);
+  });
+
   return {
     jwt,
     purchaseToken,
@@ -37,6 +52,7 @@ export const createServicesContainer = (config: Config): ServicesContainer => {
     context: contextService,
     tokens: createTokenService(),
     notifications,
-    logger
+    logger,
+    configFiles
   };
 };

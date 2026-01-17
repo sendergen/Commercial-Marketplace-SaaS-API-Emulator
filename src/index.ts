@@ -9,41 +9,10 @@ import configureUtilApi from './utility-apis';
 import { extractPublisher } from './extract-publisher';
 import { createServicesContainer } from './services/container';
 import { handleRequestIds } from './handle-requestids';
-import { Config, CspPartner } from './types';
+import { Config } from './types';
 import { durationToMS } from './helpers/date-helper';
 import { checkApiVersion } from './check-apiversion';
 import { logObject } from './helpers/log-helper';
-
-/**
- * Parse CSP_PARTNERS environment variable
- * Format: name:email:oid:tid|name:email:oid:tid
- * - Pipe (|) separates partners
- * - Colon (:) separates fields within a partner
- * - oid and tid are optional
- * Example: "Contoso CSP:admin@contoso.com|Fabrikam:partner@fabrikam.com:abc-123:def-456"
- */
-function parseCspPartners(envValue: string | undefined): CspPartner[] | undefined {
-  if (!envValue || envValue.trim() === '') {
-    return undefined;
-  }
-
-  const partners: CspPartner[] = [];
-  const entries = envValue.split('|');
-
-  for (const entry of entries) {
-    const parts = entry.split(':');
-    if (parts.length >= 2) {
-      partners.push({
-        name: parts[0].trim(),
-        email: parts[1].trim(),
-        oid: parts[2]?.trim() || undefined,
-        tid: parts[3]?.trim() || undefined,
-      });
-    }
-  }
-
-  return partners.length > 0 ? partners : undefined;
-}
 
 require('isomorphic-fetch');
 
@@ -94,7 +63,8 @@ if (publisherId !== undefined && (publisherTenantId !== undefined || publisherAp
     fileLocation: process.env.FILE_LOC ?? './config',
     requireAuth: (process.env.REQUIRE_AUTH ?? '').toLocaleLowerCase() === 'true',
     noSamples: (process.env.NO_SAMPLES ?? '').toLocaleLowerCase() === 'true',
-    cspPartners: parseCspPartners(process.env.CSP_PARTNERS),
+    cspPartners: undefined, // Loaded from csppartners.json by ConfigFileService
+    customers: undefined,   // Loaded from customers.json by ConfigFileService
     publisherId:
       publisherId ??
       (publisherTenantId !== undefined ? `${publisherTenantId}${publisherAppId as unknown as string}` : undefined) ??

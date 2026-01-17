@@ -2,53 +2,97 @@
 
 let config;
 
-// CSP Partner Storage
-const CSP_STORAGE_KEY = 'emulator_csp_partners';
+// CSP Partners - loaded from server API
+let cspPartners = [];
 
-// Default CSP partners from server config (set after config loads)
-let serverCspPartners = null;
+// Customers - loaded from server API
+let customers = [];
 
-function getDefaultCspPartners() {
-    // If server provided CSP partners via CSP_PARTNERS env var, use those
-    if (serverCspPartners && serverCspPartners.length > 0) {
-        return serverCspPartners.map((p, i) => ({
-            id: `server-csp-${i}`,
-            name: p.name,
-            email: p.email,
-            oid: p.oid || guid(),
-            tid: p.tid || guid()
-        }));
-    }
-    // Fallback default
-    return [
-        {
-            id: 'default-csp',
-            name: 'Sample CSP Partner',
-            email: 'admin@msppartner.com',
-            oid: guid(),
-            tid: guid()
-        }
-    ];
-}
-
-function loadCspPartners() {
+async function loadCspPartners() {
     try {
-        const stored = localStorage.getItem(CSP_STORAGE_KEY);
-        if (stored) {
-            return JSON.parse(stored);
+        const response = await fetch('/api/util/csp-partners');
+        if (response.ok) {
+            cspPartners = await response.json();
         }
     } catch (e) {
         console.error('Failed to load CSP partners:', e);
     }
-    // Return defaults (from server config or hardcoded fallback)
-    return getDefaultCspPartners();
+    return cspPartners;
 }
 
-function saveCspPartners(partners) {
+async function saveCspPartner(partner) {
     try {
-        localStorage.setItem(CSP_STORAGE_KEY, JSON.stringify(partners));
+        const response = await fetch('/api/util/csp-partners', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(partner)
+        });
+        if (response.ok) {
+            await loadCspPartners();
+        }
+        return response.ok;
     } catch (e) {
-        console.error('Failed to save CSP partners:', e);
+        console.error('Failed to save CSP partner:', e);
+        return false;
+    }
+}
+
+async function deleteCspPartner(id) {
+    try {
+        const response = await fetch(`/api/util/csp-partners/${id}`, {
+            method: 'DELETE'
+        });
+        if (response.ok) {
+            await loadCspPartners();
+        }
+        return response.ok;
+    } catch (e) {
+        console.error('Failed to delete CSP partner:', e);
+        return false;
+    }
+}
+
+async function loadCustomers() {
+    try {
+        const response = await fetch('/api/util/customers');
+        if (response.ok) {
+            customers = await response.json();
+        }
+    } catch (e) {
+        console.error('Failed to load customers:', e);
+    }
+    return customers;
+}
+
+async function saveCustomer(customer) {
+    try {
+        const response = await fetch('/api/util/customers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(customer)
+        });
+        if (response.ok) {
+            await loadCustomers();
+        }
+        return response.ok;
+    } catch (e) {
+        console.error('Failed to save customer:', e);
+        return false;
+    }
+}
+
+async function deleteCustomer(id) {
+    try {
+        const response = await fetch(`/api/util/customers/${id}`, {
+            method: 'DELETE'
+        });
+        if (response.ok) {
+            await loadCustomers();
+        }
+        return response.ok;
+    } catch (e) {
+        console.error('Failed to delete customer:', e);
+        return false;
     }
 }
 
@@ -60,8 +104,7 @@ function populateCspDropdown() {
     $select.find('option:not(:first)').remove();
 
     // Add CSP partners
-    const partners = loadCspPartners();
-    partners.forEach(partner => {
+    cspPartners.forEach(partner => {
         $select.append($('<option></option>')
             .val(partner.id)
             .text(partner.name)
@@ -77,13 +120,32 @@ function populateCspDropdown() {
     }
 }
 
-async function showCspManagementDialog() {
-    const partners = loadCspPartners();
+function populateCustomerDropdown() {
+    const $select = $('#customerSelect');
+    const currentValue = $select.val();
 
+    // Clear existing options except first (Custom - Enter manually)
+    $select.find('option:not(:first)').remove();
+
+    // Add customers
+    customers.forEach(customer => {
+        $select.append($('<option></option>')
+            .val(customer.id)
+            .text(customer.name)
+            .data('customer', customer));
+    });
+
+    // Restore selection if still exists
+    if (currentValue && $select.find(`option[value="${currentValue}"]`).length > 0) {
+        $select.val(currentValue);
+    }
+}
+
+async function showCspManagementDialog() {
     let html = `
         <div class="csp-management">
             <div class="csp-list">
-                ${partners.map(p => `
+                ${cspPartners.map(p => `
                     <div class="csp-item" data-id="${p.id}">
                         <div class="csp-info">
                             <strong>${escapeHtml(p.name)}</strong>
@@ -95,7 +157,7 @@ async function showCspManagementDialog() {
                         </div>
                     </div>
                 `).join('')}
-                ${partners.length === 0 ? '<div class="no-csps">No CSP partners configured</div>' : ''}
+                ${cspPartners.length === 0 ? '<div class="no-csps">No CSP partners configured</div>' : ''}
             </div>
             <hr />
             <div class="csp-form">
@@ -132,6 +194,59 @@ async function showCspManagementDialog() {
     populateCspDropdown();
 }
 
+async function showCustomerManagementDialog() {
+    let html = `
+        <div class="customer-management">
+            <div class="customer-list">
+                ${customers.map(c => `
+                    <div class="customer-item" data-id="${c.id}">
+                        <div class="customer-info">
+                            <strong>${escapeHtml(c.name)}</strong>
+                            <span>${escapeHtml(c.emailId)}</span>
+                        </div>
+                        <div class="customer-actions">
+                            <button class="edit-customer secondary small">Edit</button>
+                            <button class="delete-customer secondary small">Delete</button>
+                        </div>
+                    </div>
+                `).join('')}
+                ${customers.length === 0 ? '<div class="no-customers">No customers configured</div>' : ''}
+            </div>
+            <hr />
+            <div class="customer-form">
+                <input type="hidden" id="customerEditId" value="" />
+                <div>
+                    <label>Name</label>
+                    <input id="customerName" type="text" placeholder="Customer Company Name" />
+                </div>
+                <div>
+                    <label>Email</label>
+                    <input id="customerEmail" type="email" placeholder="customer@company.com" />
+                </div>
+                <div>
+                    <label>Object ID</label>
+                    <input id="customerOid" type="text" placeholder="AAD Object ID (or leave blank to generate)" />
+                </div>
+                <div>
+                    <label>Tenant ID</label>
+                    <input id="customerTid" type="text" placeholder="AAD Tenant ID (or leave blank to generate)" />
+                </div>
+                <div class="form-actions">
+                    <button id="saveCustomerButton" class="primary">Add Customer</button>
+                    <button id="cancelCustomerEditButton" class="secondary" style="display:none;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    await showDialog(html, 'Manage Customers', {
+        'Done': () => true
+    }, 'customer-dialog');
+
+    // Refresh dropdown after dialog closes
+    populateCustomerDropdown();
+}
+
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -142,35 +257,34 @@ function escapeHtml(text) {
 $(document).on('click', '.csp-management .edit-csp', function() {
     const $item = $(this).closest('.csp-item');
     const id = $item.data('id');
-    const partners = loadCspPartners();
-    const partner = partners.find(p => p.id === id);
+    const partner = cspPartners.find(p => p.id === id);
 
     if (partner) {
         $('#cspEditId').val(partner.id);
         $('#cspName').val(partner.name);
         $('#cspEmail').val(partner.email);
-        $('#cspOid').val(partner.oid);
-        $('#cspTid').val(partner.tid);
+        $('#cspOid').val(partner.oid || '');
+        $('#cspTid').val(partner.tid || '');
         $('#saveCspButton').text('Update Partner');
         $('#cancelCspEditButton').show();
     }
 });
 
-$(document).on('click', '.csp-management .delete-csp', function() {
+$(document).on('click', '.csp-management .delete-csp', async function() {
     const $item = $(this).closest('.csp-item');
     const id = $item.data('id');
-    let partners = loadCspPartners();
-    partners = partners.filter(p => p.id !== id);
-    saveCspPartners(partners);
-    $item.fadeOut(() => {
-        $item.remove();
-        if (partners.length === 0) {
-            $('.csp-management .csp-list').html('<div class="no-csps">No CSP partners configured</div>');
-        }
-    });
+
+    if (await deleteCspPartner(id)) {
+        $item.fadeOut(() => {
+            $item.remove();
+            if (cspPartners.length === 0) {
+                $('.csp-management .csp-list').html('<div class="no-csps">No CSP partners configured</div>');
+            }
+        });
+    }
 });
 
-$(document).on('click', '#saveCspButton', function() {
+$(document).on('click', '#saveCspButton', async function() {
     const editId = $('#cspEditId').val();
     const name = $('#cspName').val().trim();
     const email = $('#cspEmail').val().trim();
@@ -182,29 +296,18 @@ $(document).on('click', '#saveCspButton', function() {
         return;
     }
 
-    let partners = loadCspPartners();
+    const partner = {
+        id: editId || 'csp-' + guid().substring(0, 8),
+        name,
+        email,
+        oid,
+        tid
+    };
 
-    if (editId) {
-        // Update existing
-        const index = partners.findIndex(p => p.id === editId);
-        if (index !== -1) {
-            partners[index] = { id: editId, name, email, oid, tid };
-        }
-    } else {
-        // Add new
-        partners.push({
-            id: 'csp-' + guid().substring(0, 8),
-            name,
-            email,
-            oid,
-            tid
-        });
+    if (await saveCspPartner(partner)) {
+        // Refresh the dialog
+        showCspManagementDialog();
     }
-
-    saveCspPartners(partners);
-
-    // Refresh the dialog
-    showCspManagementDialog();
 });
 
 $(document).on('click', '#cancelCspEditButton', function() {
@@ -217,23 +320,94 @@ $(document).on('click', '#cancelCspEditButton', function() {
     $('#cancelCspEditButton').hide();
 });
 
+// Event delegation for Customer management dialog
+$(document).on('click', '.customer-management .edit-customer', function() {
+    const $item = $(this).closest('.customer-item');
+    const id = $item.data('id');
+    const customer = customers.find(c => c.id === id);
+
+    if (customer) {
+        $('#customerEditId').val(customer.id);
+        $('#customerName').val(customer.name);
+        $('#customerEmail').val(customer.emailId);
+        $('#customerOid').val(customer.objectId || '');
+        $('#customerTid').val(customer.tenantId || '');
+        $('#saveCustomerButton').text('Update Customer');
+        $('#cancelCustomerEditButton').show();
+    }
+});
+
+$(document).on('click', '.customer-management .delete-customer', async function() {
+    const $item = $(this).closest('.customer-item');
+    const id = $item.data('id');
+
+    if (await deleteCustomer(id)) {
+        $item.fadeOut(() => {
+            $item.remove();
+            if (customers.length === 0) {
+                $('.customer-management .customer-list').html('<div class="no-customers">No customers configured</div>');
+            }
+        });
+    }
+});
+
+$(document).on('click', '#saveCustomerButton', async function() {
+    const editId = $('#customerEditId').val();
+    const name = $('#customerName').val().trim();
+    const emailId = $('#customerEmail').val().trim();
+    const objectId = $('#customerOid').val().trim() || guid();
+    const tenantId = $('#customerTid').val().trim() || guid();
+
+    if (!name) {
+        alert('Please enter a customer name');
+        return;
+    }
+
+    const customer = {
+        id: editId || 'customer-' + guid().substring(0, 8),
+        name,
+        emailId,
+        objectId,
+        tenantId
+    };
+
+    if (await saveCustomer(customer)) {
+        // Refresh the dialog
+        showCustomerManagementDialog();
+    }
+});
+
+$(document).on('click', '#cancelCustomerEditButton', function() {
+    $('#customerEditId').val('');
+    $('#customerName').val('');
+    $('#customerEmail').val('');
+    $('#customerOid').val('');
+    $('#customerTid').val('');
+    $('#saveCustomerButton').text('Add Customer');
+    $('#cancelCustomerEditButton').hide();
+});
+
 $(async () => {
     // Configure purchase form
 
     const {result} = await callAPI("/api/util/config");
     config = result;
 
-    // Load CSP partners from server config (if provided via CSP_PARTNERS env var)
-    if (config && config.cspPartners) {
-        serverCspPartners = config.cspPartners;
-    }
+    // Load CSP partners and customers from server
+    await loadCspPartners();
+    await loadCustomers();
 
-    // Default beneficiary (end customer)
-    const defaultBeneficiary = {
+    // Default beneficiary (end customer) - use first customer if available
+    const defaultCustomer = customers.length > 0 ? customers[0] : null;
+    const defaultBeneficiary = defaultCustomer ? {
+        email: defaultCustomer.emailId,
+        oid: defaultCustomer.objectId,
+        tid: defaultCustomer.tenantId
+    } : {
         email: "customer@endcustomer.com",
         oid: guid(),
         tid: guid()
-    }
+    };
 
     $("#beneficiaryEmail").val(defaultBeneficiary.email);
     $("#beneficiaryOid").val(defaultBeneficiary.oid);
@@ -247,11 +421,46 @@ $(async () => {
     const $purchaserInputs = $("#purchaserEmail,#purchaserOid,#purchaserTid");
     const $purchaserToggle = $("#purchaserIsBeneficiary");
     const $cspSelect = $("#cspPartnerSelect");
+    const $customerSelect = $("#customerSelect");
     const $toggleOptionalFields = $("section.purchase .toggle-optional a");
-    const $planSelect = $("section.purchase select[id!='cspPartnerSelect']");
+    const $planSelect = $("section.purchase select[id!='cspPartnerSelect'][id!='customerSelect']");
 
-    // Initialize CSP dropdown (uses serverCspPartners if available)
+    // Initialize dropdowns
     populateCspDropdown();
+    populateCustomerDropdown();
+
+    // Set initial customer selection if we have customers
+    if (defaultCustomer) {
+        $customerSelect.val(defaultCustomer.id);
+    }
+
+    // Customer selection change - auto-fill beneficiary fields
+    $customerSelect.on("change", () => {
+        const selectedValue = $customerSelect.val();
+
+        if (selectedValue) {
+            // Get selected customer data
+            const customer = $customerSelect.find(':selected').data('customer');
+            if (customer) {
+                $("#beneficiaryEmail").val(customer.emailId);
+                $("#beneficiaryOid").val(customer.objectId);
+                $("#beneficiaryTid").val(customer.tenantId);
+
+                // Also update purchaser if not using CSP
+                const selectedCsp = $cspSelect.val();
+                if (!selectedCsp) {
+                    $("#purchaserEmail").val(customer.emailId);
+                    $("#purchaserOid").val(customer.objectId);
+                    $("#purchaserTid").val(customer.tenantId);
+                }
+            }
+        }
+    });
+
+    // Manage Customers button
+    $("#manageCustomersButton").on("click", () => {
+        showCustomerManagementDialog();
+    });
 
     // CSP Partner selection change
     $cspSelect.on("change", () => {
@@ -344,7 +553,7 @@ function selectOffer(offer) {
     $("section.purchase .offer > span:first-child").text(offer.displayName);
     $("section.purchase .offer > span:last-child").text(offer.publisher);
 
-    const $plans = $("section.purchase select:not(#cspPartnerSelect)").empty();
+    const $plans = $("section.purchase select:not(#cspPartnerSelect):not(#customerSelect)").empty();
 
     for (const planId in offer.plans) {
         if (!Object.prototype.hasOwnProperty.call(offer.plans, planId)) {
@@ -367,7 +576,7 @@ function generateToken() {
     const isCspPurchase = selectedCsp && selectedCsp !== '';
     const manualPurchaser = $("#purchaserIsBeneficiary").is(":checked");
     const useDifferentPurchaser = isCspPurchase || manualPurchaser;
-    const $plans = $("section.purchase select:not(#cspPartnerSelect)");
+    const $plans = $("section.purchase select:not(#cspPartnerSelect):not(#customerSelect)");
 
     const sub = {
         "id": $('#subscriptionId').val(),

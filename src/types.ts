@@ -28,10 +28,20 @@ export interface StateStore {
 }
 
 export interface CspPartner {
+  id: string;
   name: string;
   email: string;
   oid?: string;
   tid?: string;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  emailId: string;
+  objectId: string;
+  tenantId: string;
+  puid?: string;
 }
 
 export interface Config {
@@ -46,6 +56,7 @@ export interface Config {
   requireAuth: boolean | undefined;
   noSamples: boolean | undefined;
   cspPartners: CspPartner[] | undefined;
+  customers: Customer[] | undefined;
 
   run: {
     skipDataLoad: boolean | undefined;
